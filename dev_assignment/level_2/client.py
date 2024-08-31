@@ -1,72 +1,3 @@
-# import socket
-# import threading
-# import sys
-# import json
-
-# if len(sys.argv) != 2:
-#     print("Missing argument")
-#     sys.exit(1)
-
-# client_id = int(sys.argv[1])
-
-# with open('input.txt', 'r') as file:
-#     lines = file.readlines()
-
-# Listening = True
-
-# def listen_for_server_messages(client_socket):
-#     #"""Function to listen for incoming messages from the server."""
-#     while Listening:
-#         try:
-#             # Receive the length of the incoming message
-#             raw_msglen = recvall(client_socket, 4)
-#             if not raw_msglen:
-#                 print("Server closed the connection.")
-#                 break
-#             msglen = int.from_bytes(raw_msglen, byteorder='big')
-
-#             # Now, receive the entire message based on its length
-#             data = recvall(client_socket, msglen)
-#             print(f"Received from server: {data.decode()}")
-#         except ConnectionResetError:
-#             print("Connection was closed by the server.")
-#             break
-#     client_socket.close()
-
-# def recvall(socket, n):
-# #    """Helper function to receive n bytes or return None if EOF is hit."""
-#     data = bytearray()
-#     while len(data) < n:
-#         packet = socket.recv(n - len(data))
-#         if not packet:
-#             return None
-#         data.extend(packet)
-#     return data
-
-# client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# client_socket.connect(('localhost', 12345))
-# listen_thread = threading.Thread(target=listen_for_server_messages, args=(client_socket,))
-# listen_thread.start()
-
-# responses = []
-
-# def send_rec_prompt(text):
-#     text_obj = {
-#         "client_id": client_id,
-#         "text": text
-#     }
-#     message = json.dumps(text_obj).encode("utf-8")
-#     # Send the length of the message first
-#     client_socket.sendall(len(message).to_bytes(4, byteorder='big'))
-#     # Then send the actual message
-#     client_socket.sendall(message)
-
-# for line in lines:
-#     send_rec_prompt(line.strip())
-
-# Listening = False
-# client_socket.close()
-# print(responses)
 
 import socket
 import threading
@@ -85,6 +16,7 @@ with open('input.txt', 'r') as file:
 # Initialize Listening flag as a threading Event for thread-safe signaling
 Listening = threading.Event()
 Listening.set()
+responses = []
 
 def listen_for_server_messages(client_socket):
     while Listening.is_set():
@@ -98,7 +30,12 @@ def listen_for_server_messages(client_socket):
 
             # Now, receive the entire message based on its length
             data = recvall(client_socket, msglen)
-            print(f"Received from server: {data.decode()}")
+            
+            responses.append(json.loads(data.decode("utf-8")))
+            print(responses)
+            #print(f"Received from server: {data.decode()}")
+            with open("output.json", "w") as json_file:
+                json.dump(responses, json_file, indent=4)
         except ConnectionResetError:
             print("Connection was closed by the server.")
             break
@@ -124,7 +61,7 @@ client_socket.connect(('localhost', 12345))
 listen_thread = threading.Thread(target=listen_for_server_messages, args=(client_socket,))
 listen_thread.start()
 
-responses = []
+
 
 def send_rec_prompt(text):
     text_obj = {
@@ -147,3 +84,6 @@ listen_thread.join()  # Wait for the listening thread to terminate
 # Close the socket once the thread has safely stopped
 client_socket.close()
 print(responses)
+
+with open("output.json","w") as json_file:
+    json.dump(responses,json_file,indent=4)
